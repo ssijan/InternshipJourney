@@ -1,4 +1,44 @@
-Time: 2026-05-23 07:09:28 AM
+Time: 2026-05-23 01:32:16 PM
+Method: GET
+Path: /
+IP: 127.0.0.1
+User Agent:
+            Browser: Chrome 148.0.0
+            OS: Linux 
+Device: Desktop 
+Status: 200 |
+
+Time: 2026-05-23 01:32:23 PM
+Method: GET
+Path: /
+IP: 127.0.0.1
+User Agent:
+            Browser: Chrome 148.0.0
+            OS: Linux 
+Device: Desktop 
+Status: 200 |
+
+Time: 2026-05-23 01:32:30 PM
+Method: GET
+Path: /
+IP: 127.0.0.1
+User Agent:
+            Browser: Chrome 148.0.0
+            OS: Linux 
+Device: Desktop 
+Status: 200 |
+
+Time: 2026-05-23 01:32:37 PM
+Method: GET
+Path: /
+IP: 127.0.0.1
+User Agent:
+            Browser: Chrome 148.0.0
+            OS: Linux 
+Device: Desktop 
+Status: 200 |
+
+Time: 2026-05-23 01:32:52 PM
 Method: GET
 Path: /
 IP: 127.0.0.1
