@@ -1,0 +1,10 @@
+Time: 2026-05-23 07:09:28 AM
+Method: GET
+Path: /
+IP: 127.0.0.1
+User Agent:
+            Browser: Chrome 148.0.0
+            OS: Linux 
+Device: Desktop 
+Status: 200 |
+
