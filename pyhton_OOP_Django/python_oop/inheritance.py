@@ -1,4 +1,4 @@
-from classAndObject import Person
+from pyhton_OOP_Django.python_oop.classAndObject import Person
 
 class Student(Person):
     def __init__(self, name, age, varsity):
