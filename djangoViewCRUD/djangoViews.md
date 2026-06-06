@@ -107,7 +107,7 @@ This view shows a simple HTTP response without any template or database.
 
 📸 Output Screenshot:
 
-![View Output](screenshots/home1.png)
+![View Output](doc/screenshots/home1.png)
 
 ---
 
@@ -117,7 +117,7 @@ This view renders a static dashboard page.
 
 📸 Output Screenshot:
 
-![TemplateView Output](screenshots/home2.png)
+![TemplateView Output](doc/screenshots/home2.png)
 
 ---
 
@@ -127,7 +127,7 @@ This view displays all student records from the database.
 
 📸 Output Screenshot:
 
-![ListView Output](screenshots/listView.png)
+![ListView Output](doc/screenshots/listView.png)
 
 ---
 
@@ -137,11 +137,11 @@ This view is used to create a new student record.
 
 📸 Form Page:
 
-![CreateView Form](screenshots/create.png)
+![CreateView Form](doc/screenshots/create.png)
 
 📸 After Submission (Redirect to ListView):
 
-![After Create](screens/listView.png)
+![After Create](doc/screenshots/listView.png)
 
 ---
 
@@ -151,7 +151,7 @@ This view updates an existing student record.
 
 📸 After Update:
 
-![ListView After Update](screenshots/update.png)
+![ListView After Update](doc/screenshots/update.png)
 
 ---
 
@@ -161,8 +161,8 @@ This view confirms and deletes a student record.
 
 📸 Confirmation Page:
 
-![DeleteView](screenshots/delete.png)
+![DeleteView](doc/screenshots/delete.png)
 
 📸 After Deletion:
 
-![ListView After Delete](screenshots/delete2.png)
+![ListView After Delete](doc/screenshots/delete2.png)
