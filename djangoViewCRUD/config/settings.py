@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'djangoViews',
     'rest_framework',
     'drfViews',
+    'crudApi'
 ]
 
 MIDDLEWARE = [

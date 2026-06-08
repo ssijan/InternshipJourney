@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Account
+from .models import BankAccount
 from django.contrib.auth.models import User
 
  
@@ -8,7 +8,7 @@ class AccountListSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source="owner.username", read_only=True)
  
     class Meta:
-        model = Account
+        model = BankAccount
         fields = ["id", "account_number", "account_type", "balance", "status", "owner_username"]
  
  
@@ -17,7 +17,7 @@ class AccountDetailSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source="owner.username", read_only=True)
  
     class Meta:
-        model = Account
+        model = BankAccount
         fields = "__all__"
         read_only_fields = ["id", "owner", "created_at", "updated_at"]
 

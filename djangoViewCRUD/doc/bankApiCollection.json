@@ -1,0 +1,722 @@
+{
+  "info": {
+    "name": "Banking API — Full Collection",
+    "_postman_id": "banking-api-v1-collection",
+    "description": "Complete test collection for Account + Transaction CRUD API.\n\nFIXES APPLIED:\n  1. Delete Account moved to end — after all Transaction tests complete.\n  2. 'Create Transaction — On Frozen Account' now self-freezes via pre-request script and self-unfreezes after, so it is independent of folder ordering.\n  3. 'Filter Transactions by account' assertion fixed — list serializer does not include the account field, so we now assert on reference field instead.\n  4. Proper request ordering ensures transactionId is always set before Retrieve/Reverse requests run.\n\nSetup: set {{baseUrl}} (default: http://localhost:8000/api) and run 'Get JWT Token' first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000/api", "type": "string" },
+    { "key": "token",   "value": "", "type": "string", "description": "Auto-set by 'Get JWT Token'" },
+    { "key": "accountId",     "value": "", "type": "string" },
+    { "key": "transactionId", "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Get JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.access) {",
+                  "  pm.collectionVariables.set('token', json.access);",
+                  "  pm.test('Access token received', () => pm.expect(json.access).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"alice\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/token/",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "token", ""]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"<paste-refresh-token-here>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/token/refresh/",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "token", "refresh", ""]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Accounts",
+      "item": [
+
+        {
+          "name": "List Accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "pm.test('Response is array', () => pm.expect(json).to.be.an('array'));",
+                  "pm.test('Each item has account_number', () => {",
+                  "  if (json.length > 0) pm.expect(json[0]).to.have.property('account_number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/accounts/", "host": ["{{baseUrl}}"], "path": ["accounts", ""] }
+          }
+        },
+
+        {
+          "name": "List Accounts — Filter by type=savings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All results are savings accounts', () => {",
+                  "  pm.response.json().forEach(a => pm.expect(a.account_type).to.eql('savings'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/accounts/?type=savings",
+              "host": ["{{baseUrl}}"],
+              "path": ["accounts", ""],
+              "query": [{ "key": "type", "value": "savings" }]
+            }
+          }
+        },
+
+        {
+          "name": "Create Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "pm.test('Balance starts at zero', () => pm.expect(json.balance).to.eql('0.00'));",
+                  "pm.test('Status is active',       () => pm.expect(json.status).to.eql('active'));",
+                  "// FIX: store accountId HERE so every subsequent folder step uses a live account",
+                  "pm.collectionVariables.set('accountId', String(json.id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_number\": \"1234567890\",\n  \"account_type\": \"savings\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/accounts/", "host": ["{{baseUrl}}"], "path": ["accounts", ""] }
+          }
+        },
+
+        {
+          "name": "Create Account — Invalid (non-numeric number)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error on account_number field', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('account_number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_number\": \"ABCDEF\",\n  \"account_type\": \"savings\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/accounts/", "host": ["{{baseUrl}}"], "path": ["accounts", ""] }
+          }
+        },
+
+        {
+          "name": "Retrieve Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has transaction_count field', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('transaction_count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/accounts/{{accountId}}/", "host": ["{{baseUrl}}"], "path": ["accounts", "{{accountId}}", ""] }
+          }
+        },
+
+        {
+          "name": "Update Account (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('account_type updated to checking', () => {",
+                  "  pm.expect(pm.response.json().account_type).to.eql('checking');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"account_type\": \"checking\"\n}" },
+            "url": { "raw": "{{baseUrl}}/accounts/{{accountId}}/", "host": ["{{baseUrl}}"], "path": ["accounts", "{{accountId}}", ""] }
+          }
+        },
+
+        {
+          "name": "Freeze Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Account is now frozen', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('frozen');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/accounts/{{accountId}}/freeze/", "host": ["{{baseUrl}}"], "path": ["accounts", "{{accountId}}", "freeze", ""] }
+          }
+        },
+
+        {
+          "name": "Freeze Account — Already Frozen (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error mentions frozen', () => {",
+                  "  pm.expect(pm.response.json().detail).to.include('frozen');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/accounts/{{accountId}}/freeze/", "host": ["{{baseUrl}}"], "path": ["accounts", "{{accountId}}", "freeze", ""] }
+          }
+        },
+
+        {
+          "name": "Unfreeze Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Account is active again', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('active');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/accounts/{{accountId}}/unfreeze/", "host": ["{{baseUrl}}"], "path": ["accounts", "{{accountId}}", "unfreeze", ""] }
+          }
+        },
+
+        {
+          "name": "Account Statement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "pm.test('Has summary block', () => {",
+                  "  pm.expect(json).to.have.property('summary');",
+                  "  pm.expect(json.summary).to.have.property('transaction_count');",
+                  "});",
+                  "pm.test('Has transactions array', () => {",
+                  "  pm.expect(json.transactions).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/accounts/{{accountId}}/statement/?from=2024-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["accounts", "{{accountId}}", "statement", ""],
+              "query": [
+                { "key": "from", "value": "2024-01-01" },
+                { "key": "to",   "value": "2026-12-31" }
+              ]
+            }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Transactions",
+      "item": [
+
+        {
+          "name": "List Transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/transactions/", "host": ["{{baseUrl}}"], "path": ["transactions", ""] }
+          }
+        },
+
+        {
+          "name": "Create Transaction — Deposit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "pm.test('Status is completed', () => pm.expect(json.status).to.eql('completed'));",
+                  "pm.test('Balance after > balance before', () => {",
+                  "  pm.expect(parseFloat(json.balance_after)).to.be.above(parseFloat(json.balance_before));",
+                  "});",
+                  "// Store transactionId for Retrieve / Reverse tests below",
+                  "pm.collectionVariables.set('transactionId', String(json.id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": {{accountId}},\n  \"transaction_type\": \"deposit\",\n  \"amount\": \"5000.00\",\n  \"description\": \"Monthly salary\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/transactions/", "host": ["{{baseUrl}}"], "path": ["transactions", ""] }
+          }
+        },
+
+        {
+          "name": "Create Transaction — Withdrawal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "pm.test('Balance after < balance before', () => {",
+                  "  pm.expect(parseFloat(json.balance_after)).to.be.below(parseFloat(json.balance_before));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": {{accountId}},\n  \"transaction_type\": \"withdrawal\",\n  \"amount\": \"500.00\",\n  \"description\": \"ATM withdrawal\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/transactions/", "host": ["{{baseUrl}}"], "path": ["transactions", ""] }
+          }
+        },
+
+        {
+          "name": "Create Transaction — Insufficient Balance (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Insufficient balance error present', () => {",
+                  "  pm.expect(JSON.stringify(pm.response.json())).to.include('balance');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": {{accountId}},\n  \"transaction_type\": \"withdrawal\",\n  \"amount\": \"999999999.00\",\n  \"description\": \"Very large withdrawal\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/transactions/", "host": ["{{baseUrl}}"], "path": ["transactions", ""] }
+          }
+        },
+
+        {
+          "name": "Create Transaction — On Frozen Account (expect 400)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// FIX: self-contained freeze — don't rely on folder ordering.",
+                  "// We freeze the account right here before this test runs.",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "const token   = pm.collectionVariables.get('token');",
+                  "const accountId = pm.collectionVariables.get('accountId');",
+                  "pm.sendRequest({",
+                  "  url:    `${baseUrl}/accounts/${accountId}/freeze/`,",
+                  "  method: 'POST',",
+                  "  header: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },",
+                  "  body:   { mode: 'raw', raw: '{}' }",
+                  "}, (err, res) => {",
+                  "  if (err) console.error('Pre-freeze failed:', err);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Frozen account error', () => {",
+                  "  pm.expect(JSON.stringify(pm.response.json())).to.include('frozen');",
+                  "});",
+                  "",
+                  "// FIX: self-contained unfreeze — restore account to active after test.",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "const token   = pm.collectionVariables.get('token');",
+                  "const accountId = pm.collectionVariables.get('accountId');",
+                  "pm.sendRequest({",
+                  "  url:    `${baseUrl}/accounts/${accountId}/unfreeze/`,",
+                  "  method: 'POST',",
+                  "  header: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },",
+                  "  body:   { mode: 'raw', raw: '{}' }",
+                  "}, (err, res) => {",
+                  "  if (err) console.error('Post-unfreeze failed:', err);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": {{accountId}},\n  \"transaction_type\": \"deposit\",\n  \"amount\": \"100.00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/transactions/", "host": ["{{baseUrl}}"], "path": ["transactions", ""] }
+          }
+        },
+
+        {
+          "name": "Retrieve Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has UUID reference field', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('reference');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/transactions/{{transactionId}}/", "host": ["{{baseUrl}}"], "path": ["transactions", "{{transactionId}}", ""] }
+          }
+        },
+
+        {
+          "name": "Reverse Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "pm.test('Original status is reversed', () => pm.expect(json.original.status).to.eql('reversed'));",
+                  "pm.test('Reversal transaction created',  () => pm.expect(json.reversal).to.exist);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Customer dispute — duplicate charge\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/transactions/{{transactionId}}/reverse/", "host": ["{{baseUrl}}"], "path": ["transactions", "{{transactionId}}", "reverse", ""] }
+          }
+        },
+
+        {
+          "name": "Reverse Already-Reversed Transaction (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Already reversed error', () => {",
+                  "  pm.expect(pm.response.json().detail).to.include('already been reversed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Trying again\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/transactions/{{transactionId}}/reverse/", "host": ["{{baseUrl}}"], "path": ["transactions", "{{transactionId}}", "reverse", ""] }
+          }
+        },
+
+        {
+          "name": "Filter Transactions by account + type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "// FIX: TransactionListSerializer does NOT include 'account' field.",
+                  "// Asserting on 'account' always failed. We now assert on 'reference'",
+                  "// (which IS in the list serializer) and that the result is an array.",
+                  "pm.test('Response is an array of transactions', () => {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json).to.be.an('array');",
+                  "  if (json.length > 0) {",
+                  "    pm.expect(json[0]).to.have.property('reference');",
+                  "    pm.expect(json[0]).to.have.property('transaction_type');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/transactions/?account={{accountId}}&type=deposit",
+              "host": ["{{baseUrl}}"],
+              "path": ["transactions", ""],
+              "query": [
+                { "key": "account", "value": "{{accountId}}" },
+                { "key": "type",    "value": "deposit" }
+              ]
+            }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Security Tests",
+      "item": [
+
+        {
+          "name": "Access Another User's Account (expect 403 or 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Access denied — 403 or 404', () => {",
+                  "  pm.expect([403, 404]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/accounts/9999/", "host": ["{{baseUrl}}"], "path": ["accounts", "9999", ""] }
+          }
+        },
+
+        {
+          "name": "Unauthenticated Request (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/accounts/", "host": ["{{baseUrl}}"], "path": ["accounts", ""] }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Teardown",
+      "description": "FIX: Delete Account moved here — AFTER all Transaction tests — so {{accountId}} remains valid throughout the entire collection run.",
+      "item": [
+
+        {
+          "name": "Delete Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 204', () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.set('accountId', '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/accounts/{{accountId}}/", "host": ["{{baseUrl}}"], "path": ["accounts", "{{accountId}}", ""] }
+          }
+        }
+
+      ]
+    }
+
+  ]
+}

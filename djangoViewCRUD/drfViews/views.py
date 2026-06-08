@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
 from .serializers import AccountDetailSerializer, AccountListSerializer
-from .models import Account
+from .models import BankAccount
 
 from rest_framework.generics import CreateAPIView
 from .serializers import RegisterSerializer
@@ -26,7 +26,7 @@ class AccountListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
  
     def get(self, request):
-        accounts = Account.objects.filter(owner=request.user)
+        accounts = BankAccount.objects.filter(owner=request.user)
         serializer = AccountListSerializer(accounts, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
  
@@ -48,7 +48,7 @@ class AccountRetrieveUpdateDestroyAPIView(APIView):
     permission_classes = [IsAuthenticated]
  
     def get_object(self, pk, user):
-        return get_object_or_404(Account, pk=pk, owner=user)
+        return get_object_or_404(BankAccount, pk=pk, owner=user)
  
     def get(self, request, pk):
         account = self.get_object(pk, request.user)
@@ -101,7 +101,7 @@ class AccountListCreateGenericView(ListModelMixin, CreateModelMixin, GenericAPIV
     serializer_class = AccountDetailSerializer
  
     def get_queryset(self):
-        return Account.objects.filter(owner=self.request.user)
+        return BankAccount.objects.filter(owner=self.request.user)
  
     def get_serializer_class(self):
         if self.request.method == "GET":
@@ -129,7 +129,7 @@ class AccountRetrieveUpdateDestroyGenericView(RetrieveModelMixin, UpdateModelMix
     serializer_class = AccountDetailSerializer
  
     def get_queryset(self):
-        return Account.objects.filter(owner=self.request.user)
+        return BankAccount.objects.filter(owner=self.request.user)
  
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
@@ -166,7 +166,7 @@ class AccountViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
  
     def get_queryset(self):
-        return Account.objects.filter(owner=self.request.user)
+        return BankAccount.objects.filter(owner=self.request.user)
  
     def get_serializer_class(self):
         if self.action == "list":
