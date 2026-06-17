@@ -389,8 +389,6 @@ After completing this project, I gained hands-on experience with:
 * Data transformation using serializer hooks
 * Real-world serializer architecture decisions
 
-```
-```
 ## Author
 
 Md.Sakibur Rahman
