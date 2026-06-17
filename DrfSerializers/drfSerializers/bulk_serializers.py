@@ -10,20 +10,20 @@ class TransactionListSerializer(serializers.ListSerializer):
         return Transaction.objects.bulk_create(objs)
     
     def update(self, instance, validated_data):
+        # print("validate:",validated_data)
         instance_map = {obj.id: obj for obj in instance}
 
         res = []
 
         for i in validated_data:
-            obj = i.get("id")
-            val = instance_map.get(obj)
-            if val:
-                res.append(self.child.update(val, i))
+            obj = instance_map.get(i["id"])
+            if obj:
+                res.append(self.child.update(obj, i))
 
         return res
     
 class TransactionBulkSerializer(serializers.ModelSerializer):
-
+    id = serializers.IntegerField()
     class Meta:
         model = Transaction
         fields = "__all__"

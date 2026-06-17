@@ -76,7 +76,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 #5
 class AccountDetailSerializer(serializers.ModelSerializer):
 
-    balance = serializers.ModelField(source="balance_usd")
+    balance = MoneyField(source="balance_usd")
     transaction_count = serializers.SerializerMethodField()
     last_active = serializers.SerializerMethodField()
 
