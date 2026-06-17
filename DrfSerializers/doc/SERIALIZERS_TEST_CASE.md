@@ -1,243 +1,126 @@
-# Serializer Comparison Guide
+# Fixed Serializer Test Cases
 
-## 1. Serializer
+## Test Case 1: Invalid Account Number
 
-### What is it?
+### Problem
 
-`Serializer` is the most basic serializer in Django REST Framework. Every field must be declared manually.
+Account numbers shorter than 10 characters were accepted.
 
-### Example
+### Fix
+
+Added field-level validation:
 
 ```python
-class UserSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
-    full_name = serializers.CharField()
-    email = serializers.EmailField()
+def validate_account_number(self, value):
+    if len(value) < 10:
+        raise serializers.ValidationError(
+            "Account number too short."
+        )
+    return value
 ```
-
-### When to Use
-
-* Data does not come from a Django model
-* Custom API responses
-* External API integrations
-* Learning serializer internals
-
-### Pros
-
-* Full control over fields
-* Not tied to database models
-
-### Cons
-
-* More code
-* Manual field definitions
 
 ---
 
-## 2. ModelSerializer
+## Test Case 2: Negative Transaction Amount
 
-### What is it?
+### Problem
 
-`ModelSerializer` automatically generates serializer fields from a Django model.
+Transactions allowed negative amounts.
 
-### Example
+### Fix
+
+Added validation:
 
 ```python
-class UserSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = "__all__"
+def validate_amount(self, value):
+    if value <= 0:
+        raise serializers.ValidationError(
+            "Amount must be greater than zero."
+        )
+    return value
 ```
-
-### When to Use
-
-* Most CRUD APIs
-* Model-based applications
-* Standard DRF projects
-
-### Pros
-
-* Less code
-* Automatic validation
-* Easy maintenance
-
-### Cons
-
-* Less flexibility than Serializer
 
 ---
 
-## 3. Flat Serializer
+## Test Case 3: Withdraw Exceeding Balance
 
-### What is it?
+### Problem
 
-A serializer that returns only IDs for related objects.
+Users could withdraw more money than available.
 
-### Example
+### Fix
+
+Added object-level validation:
 
 ```python
-class TransactionSerializer(serializers.ModelSerializer):
+def validate(self, attrs):
 
-    class Meta:
-        model = Transaction
-        fields = "__all__"
+    if (
+        attrs["transaction_type"] == "withdraw"
+        and attrs["amount"] > attrs["account"].balance
+    ):
+        raise serializers.ValidationError(
+            "Insufficient balance."
+        )
+
+    return attrs
 ```
-
-### Response
-
-```json
-{
-    "id": 1,
-    "account": 5,
-    "amount": 500
-}
-```
-
-### When to Use
-
-* Large datasets
-* Performance-sensitive APIs
-* Mobile applications
-
-### Pros
-
-* Faster queries
-* Smaller payloads
-
-### Cons
-
-* Requires additional API calls
 
 ---
 
-## 4. Nested Serializer
+## Test Case 4: Writable Nested Serializer Failure
 
-### What is it?
+### Problem
 
-A serializer that includes related object details instead of only IDs.
-
-### Example
-
-```python
-class AccountSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Account
-        fields = ["id", "account_number"]
-
-
-class TransactionSerializer(serializers.ModelSerializer):
-
-    account = AccountSerializer()
-
-    class Meta:
-        model = Transaction
-        fields = "__all__"
-```
-
-### Response
-
-```json
-{
-    "id": 1,
-    "amount": 500,
-    "account": {
-        "id": 5,
-        "account_number": "1234567890"
-    }
-}
-```
-
-### When to Use
-
-* Detail views
-* Rich API responses
-* Dashboard applications
-
-### Pros
-
-* Fewer API requests
-* Better developer experience
-
-### Cons
-
-* Larger payloads
-* More database queries if not optimized
-
----
-
-## 5. Writable Nested Serializer
-
-### What is it?
-
-Allows creating or updating related objects in a single request.
-
-### Example
-
-```python
-{
-    "amount": 500,
-    "account": {
-        "account_number": "1234567890",
-        "user": {
-            "full_name": "MD Sijan"
-        }
-    }
-}
-```
-
-### Creates
+Nested account and user creation raised:
 
 ```text
-User
- ↓
-Account
- ↓
-Transaction
+The .create() method does not support writable nested fields
 ```
 
-### When to Use
+### Fix
 
-* Complex forms
-* Multi-step object creation
-* Banking, e-commerce, and CRM systems
+Implemented custom create():
 
-### Pros
-
-* One API request
-* Better user experience
-
-### Cons
-
-* More complex serializer logic
-* Requires custom create/update methods
+```python
+def create(self, validated_data):
+    ...
+```
 
 ---
 
-## Which One Should I Choose?
+## Test Case 5: Bulk Update Failure
 
-| Scenario                        | Recommended Serializer     |
-| ------------------------------- | -------------------------- |
-| Non-model data                  | Serializer                 |
-| Standard CRUD APIs              | ModelSerializer            |
-| Large datasets                  | Flat Serializer            |
-| Detailed API responses          | Nested Serializer          |
-| Create related objects together | Writable Nested Serializer |
+### Problem
+
+ListSerializer could create objects but failed during updates.
+
+### Fix
+
+Implemented custom update():
+
+```python
+def update(self, instances, validated_data):
+    ...
+```
+
+and exposed the `id` field:
+
+```python
+id = serializers.IntegerField()
+```
+
+to map incoming data to existing objects.
 
 ---
 
-## Project Usage
+## Result
 
-This project demonstrates all major DRF serializer types:
+All serializer tests now pass successfully and demonstrate:
 
-* Serializer
-* ModelSerializer
-* ListSerializer
-* Flat Serializer
-* Nested Serializer
-* Writable Nested Serializer
-* Custom Fields
-* SerializerMethodField
-* Validation
-* Bulk Operations
+* Field-level validation
+* Object-level validation
+* Nested writes
+* Bulk create
+* Bulk update
+* Custom serializer fields
