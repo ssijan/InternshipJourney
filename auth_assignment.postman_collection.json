@@ -1,0 +1,264 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6",
+		"name": "DRF & SimpleJWT Auth System",
+		"description": "Comprehensive Postman Collection for testing Custom JWT Authentication, Claims, and Session Tracking Operations.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. User Registration",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"intern@company.com\",\n    \"password\": \"SecurePassword2026\",\n    \"role\": \"engineer\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/auth/register/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"register",
+						""
+					]
+				},
+				"description": "Registers a new user account using the custom email-based authentication infrastructure."
+			},
+			"response": []
+		},
+		{
+			"name": "2. User Login (Obtain JWT)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"if (jsonData.access) {",
+							"    pm.collectionVariables.set(\"jwt_access_token\", jsonData.access);",
+							"}",
+							"if (jsonData.refresh) {",
+							"    pm.collectionVariables.set(\"jwt_refresh_token\", jsonData.refresh);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				]
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"intern@company.com\",\n    \"password\": \"SecurePassword2026\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/auth/login/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"login",
+						""
+					]
+				},
+				"description": "Authenticates via email, logs device footprints, and returns access and refresh tokens automatically stored by the post-request script."
+			},
+			"response": []
+		},
+		{
+			"name": "3. List Active Tracking Sessions",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/auth/sessions/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"sessions",
+						""
+					]
+				},
+				"description": "Returns a collection of active devices and locations logged under the calling user account."
+			},
+			"response": []
+		},
+		{
+			"name": "4. Revoke Specific Device Session",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/auth/sessions/1/revoke/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"sessions",
+						"1",
+						"revoke",
+						""
+					]
+				},
+				"description": "Destroys a specific session record via its primary database reference ID, injecting the associated JTI into the system blacklist."
+			},
+			"response": []
+		},
+		{
+			"name": "5. Refresh Access Token (Rotation)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"if (jsonData.access) {",
+							"    pm.collectionVariables.set(\"jwt_access_token\", jsonData.access);",
+							"}",
+							"if (jsonData.refresh) {",
+							"    pm.collectionVariables.set(\"jwt_refresh_token\", jsonData.refresh);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				]
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"refresh\": \"{{jwt_refresh_token}}\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/auth/refresh/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"refresh",
+						""
+					]
+				},
+				"description": "Submits the active refresh token, blacklists it, and rolls out a new operational pair."
+			},
+			"response": []
+		},
+		{
+			"name": "6. Task 1: Generate Static DRF Token",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/auth/debug-drf-token/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"debug-drf-token",
+						""
+					]
+				},
+				"description": "Returns a stateful database token to support side-by-side verification requirements."
+			},
+			"response": []
+		},
+		{
+			"name": "7. Explicit Token Logout",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"refresh\": \"{{jwt_refresh_token}}\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/auth/logout/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"logout",
+						""
+					]
+				},
+				"description": "Blacklists the active refresh token immediately, ending the session execution path."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "jwt_access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "jwt_refresh_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
